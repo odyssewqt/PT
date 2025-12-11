@@ -16,6 +16,7 @@ n_grid = 128
 steps = 200
 dt = 5e-5
 
+
 n_particles = 37908+37908+37908
 fluid_particles = 37908*3
 dx = 1 / n_grid
