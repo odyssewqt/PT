@@ -305,7 +305,7 @@ def compute_loss_part1():
 @ti.kernel
 def compute_loss_part2():
     denom_m = ti.max(total_active_cells_m[None], 1.0)
-    denom_v = ti.max(total_weight_sum_v[None], 1.0)
+    denom_v = ti.max(total_weight_sum_v[None], epsilon)
     loss1_m[None] = 1e11 * total_loss_m_unavg[None] / denom_m
     loss1_v[None] = 1e11 * total_loss_v_unavg[None] / denom_v
     loss1[None] = loss1_m[None] + loss1_v[None]
@@ -404,8 +404,30 @@ def particle_loss(pred, true, mask):
     loss_huber = masked_huber_loss(pred, true, mask, delta=0.1)
     return loss_huber
 
+def compute_boundary_loss(pos, n_grid=128, bound=3):
+    """
+    计算边界惩罚损失。
+    pos: (B, N, 3) 物理坐标
+    n_grid: 网格分辨率
+    bound: 边界厚度 (你的代码里是 3)
+    """
+    dx = 1.0 / n_grid
+    margin = bound * dx  # 3 * (1/128) ≈ 0.0234
+    
+    min_limit = margin
+    max_limit = 1.0 - margin
+    
+    diff_min = torch.relu(min_limit - pos)
+    
+    diff_max = torch.relu(pos - max_limit)
+    
+    loss = torch.mean(diff_min**2 + diff_max**2)
+    
+    return loss
+
 def compute_rotation_matrix(F_flat):
     """
+    使用 Newton-Schulz 迭代法从形变梯度 F 中提取旋转矩阵 R。
     输入 F_flat: (B, N, 9)
     输出 R:      (B, N, 3, 3)
     """
@@ -445,8 +467,8 @@ def save_checkpoint(model, optimizer, scheduler, epoch, best_val_loss, path):
 
 data_path = "/home/wqz/fluid/data"
 file_path = "/home/wqz/fluid/data"
-log_dir = "/home/wqz/fluid/experiment/demo1/scheme2_2/logs"
-save_path = '/home/wqz/fluid/experiment/demo1/scheme2_2/saved'
+log_dir = "/home/wqz/fluid/experiment/demo1/scheme-v2/logs"
+save_path = '/home/wqz/fluid/experiment/demo1/scheme-v2/saved'
 batch_size = 1
 num_epochs = 150
 lr = 1e-4 
